@@ -23,8 +23,11 @@ type Config struct {
 // Falha rápido (fail-fast) se algo crítico estiver faltando, em vez de deixar
 // o servidor subir em um estado inconsistente.
 func Load() (Config, error) {
+	// PORT é a convenção usada por PaaS como Railway/Heroku, que a injeta
+	// automaticamente no container — tem prioridade sobre HTTP_PORT, que
+	// continua funcionando para desenvolvimento local via .env.
 	cfg := Config{
-		HTTPPort:    getEnv("HTTP_PORT", "8080"),
+		HTTPPort:    getEnv("PORT", getEnv("HTTP_PORT", "8080")),
 		MongoURI:    getEnv("MONGO_URI", "mongodb://localhost:27017"),
 		MongoDBName: getEnv("MONGO_DB_NAME", "gestorbuy"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),

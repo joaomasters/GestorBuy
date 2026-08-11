@@ -74,6 +74,21 @@ composto e como filtro obrigatório em toda query — nunca confiar em
 `tenant_id` vindo de parâmetro de URL/body, sempre ler de
 `auth.ClaimsFromContext`.
 
+## Deploy
+
+Produção roda em **Railway** (container Docker, ver [Dockerfile](Dockerfile)) conectado a um cluster **MongoDB Atlas** — não a um Mongo standalone: o fluxo de `POST /auth/register` usa transações (`session.WithTransaction`), que exigem um replica set, e Atlas sempre é um replica set (mesmo no tier gratuito M0).
+
+Variáveis de ambiente esperadas em produção (configuradas direto no Railway, nunca commitadas):
+
+| Variável | Descrição |
+|---|---|
+| `MONGO_URI` | Connection string do Atlas (`mongodb+srv://...`) |
+| `MONGO_DB_NAME` | `gestorbuy` |
+| `JWT_SECRET` | Segredo forte, exclusivo de produção — nunca reaproveitar o placeholder do `.env.example` |
+| `PORT` | Injetada automaticamente pelo Railway — não precisa configurar |
+
+Health check do Railway aponta para `GET /health`.
+
 ## Próximas entregas
 
 - Hub OAuth2 com Mercado Livre e Shopee

@@ -1,0 +1,10 @@
+# Força LF para código-fonte, independente do core.autocrlf local — Go
+# (gofmt) e as ferramentas de CI (rodando em Linux) esperam LF.
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Makefile text eol=lf
+*.sh text eol=lf
