@@ -1,0 +1,23 @@
+# Segredos locais — nunca commitar
+.env
+
+# Binários compilados
+/bin/
+/gestorbuy-api
+*.exe
+*.exe~
+*.test
+*.out
+
+# Go
+go.work
+go.work.sum
+
+# Editor/IDE
+.vscode/
+.idea/
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
