@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>GestorBuy</title>
+    <style>
+      body {
+        width: 320px;
+        margin: 0;
+        padding: 16px;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 13px;
+        color: #111;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 12px;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
+      input {
+        padding: 6px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      button {
+        width: 100%;
+        padding: 8px;
+        border: none;
+        border-radius: 6px;
+        background: #111827;
+        color: #fff;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .error {
+        color: #dc2626;
+        margin-top: 8px;
+      }
+      .success {
+        color: #15803d;
+        margin-top: 8px;
+      }
+      .muted {
+        color: #6b7280;
+      }
+      .preview {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 12px;
+      }
+      .preview dt {
+        color: #6b7280;
+        font-size: 11px;
+      }
+      .preview dd {
+        margin: 0 0 8px;
+      }
+      #logout {
+        margin-top: 10px;
+        background: none;
+        color: #6b7280;
+        text-decoration: underline;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>GestorBuy — Mineração</h1>
+
+    <section id="login-view">
+      <label
+        >E-mail
+        <input id="email" type="email" autocomplete="username" />
+      </label>
+      <label
+        >Senha
+        <input id="password" type="password" autocomplete="current-password" />
+      </label>
+      <button id="login-btn">Entrar</button>
+      <p id="login-error" class="error" hidden></p>
+    </section>
+
+    <section id="app-view" hidden>
+      <div id="not-product-page" class="muted" hidden>
+        Abra a página de um anúncio no Mercado Livre pra minerar.
+      </div>
+
+      <div id="item-preview" class="preview" hidden>
+        <dl>
+          <dt>Título</dt>
+          <dd id="preview-title"></dd>
+          <dt>Preço</dt>
+          <dd id="preview-price"></dd>
+          <dt>Vendidos</dt>
+          <dd id="preview-sold"></dd>
+          <dt>Vendedor</dt>
+          <dd id="preview-seller"></dd>
+        </dl>
+      </div>
+
+      <button id="save-btn" hidden>Salvar no GestorBuy</button>
+      <p id="save-message" hidden></p>
+
+      <button id="logout">Sair da extensão</button>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
