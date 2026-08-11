@@ -8,3 +8,11 @@ Dockerfile text eol=lf
 *.yaml text eol=lf
 Makefile text eol=lf
 *.sh text eol=lf
+
+# Frontend (web/) — mesma lógica: LF fixo pra ESLint/Prettier e CI (Linux)
+# não brigarem com o CRLF que o Windows injeta no checkout.
+*.ts text eol=lf
+*.tsx text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.css text eol=lf
