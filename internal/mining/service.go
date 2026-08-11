@@ -11,7 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-var ErrInvalidItemReference = errors.New("mining: não foi possível identificar o ID do anúncio nesse link/texto")
+var (
+	ErrInvalidItemReference    = errors.New("mining: não foi possível identificar o ID do anúncio nesse link/texto")
+	ErrMarketplaceNotConnected = errors.New("mining: conecte sua conta do Mercado Livre em Integrações antes de rastrear anúncios")
+)
 
 // itemIDPattern casa tanto o ID puro ("MLB1234567890") quanto o jeito que
 // aparece nas URLs do Mercado Livre ("MLB-1234567890" com hífen).
@@ -28,13 +31,22 @@ func ParseItemID(urlOrID string) (string, error) {
 	return "MLB" + match[1], nil
 }
 
-type Service struct {
-	repo *Repository
-	ml   *MercadoLivreClient
+// TokenProvider fornece um access_token válido de uma conta de marketplace
+// conectada. Satisfeita por *internal/marketplace.Service, que já tem esse
+// exato método (EnsureValidToken) — interface local em vez de importar o
+// pacote concreto, pra não acoplar mining a marketplace além do necessário.
+type TokenProvider interface {
+	EnsureValidToken(ctx context.Context, tenantID string) (string, error)
 }
 
-func NewService(repo *Repository, ml *MercadoLivreClient) *Service {
-	return &Service{repo: repo, ml: ml}
+type Service struct {
+	repo   *Repository
+	ml     *MercadoLivreClient
+	tokens TokenProvider
+}
+
+func NewService(repo *Repository, ml *MercadoLivreClient, tokens TokenProvider) *Service {
+	return &Service{repo: repo, ml: ml, tokens: tokens}
 }
 
 // TrackAndSnapshot resolve o ID (aceita link ou ID direto), busca o estado
@@ -48,7 +60,12 @@ func (s *Service) TrackAndSnapshot(ctx context.Context, tenantID, urlOrID string
 		return nil, nil, err
 	}
 
-	public, err := s.ml.FetchPublicItem(ctx, itemID)
+	accessToken, err := s.tokens.EnsureValidToken(ctx, tenantID)
+	if err != nil {
+		return nil, nil, ErrMarketplaceNotConnected
+	}
+
+	public, err := s.ml.FetchItem(ctx, itemID, accessToken)
 	if err != nil {
 		return nil, nil, err
 	}

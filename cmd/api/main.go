@@ -77,8 +77,12 @@ func main() {
 	}
 	marketplaceHandler := marketplace.NewHandler(marketplaceSvc, log, cfg.FrontendURL)
 
+	// mining depende do marketplaceSvc só como TokenProvider (interface) —
+	// desde que o ML bloqueia chamadas anônimas ao endpoint de item (ver
+	// internal/mining/mercadolivre_client.go), a mineração agora exige uma
+	// conta de marketplace conectada.
 	miningRepo := mining.NewRepository(db)
-	miningSvc := mining.NewService(miningRepo, mining.NewMercadoLivreClient())
+	miningSvc := mining.NewService(miningRepo, mining.NewMercadoLivreClient(), marketplaceSvc)
 	miningHandler := mining.NewHandler(miningSvc, log)
 
 	mux := http.NewServeMux()
