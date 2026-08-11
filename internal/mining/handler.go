@@ -156,6 +156,8 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error, op string
 	switch {
 	case errors.Is(err, ErrInvalidItemReference):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, ErrMarketplaceNotConnected):
+		writeError(w, http.StatusConflict, err.Error())
 	default:
 		h.log.Error("mining."+op+" falhou", "error", err)
 		writeError(w, http.StatusBadGateway, err.Error())
