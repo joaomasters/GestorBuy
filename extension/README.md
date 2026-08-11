@@ -50,3 +50,28 @@ Testar contra o backend local em vez de produção: troca `API_URL` em
 Rodar `npm run build` de novo e clicar no botão de recarregar (ícone de
 setas circulares) no card da extensão em `chrome://extensions` — o Chrome
 não recarrega automaticamente.
+
+## Gerando o .zip pra distribuição
+
+A página `/extension` do painel web oferece um `.zip` pronto pra baixar
+(`web/public/gestorbuy-extension.zip`), pra quem só quer usar a extensão
+sem instalar Node.js. Depois de mudar o código-fonte, regenerar esse zip
+(Windows/PowerShell):
+
+```powershell
+cd extension
+npm run build
+
+$stage = Join-Path $env:TEMP "gestorbuy-extension-dist"
+Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $stage | Out-Null
+Copy-Item manifest.json,background.js,content-script.js,popup.html,popup.js $stage
+
+$dest = "..\web\public\gestorbuy-extension.zip"
+Remove-Item $dest -Force -ErrorAction SilentlyContinue
+Compress-Archive -Path "$stage\*" -DestinationPath $dest
+Remove-Item $stage -Recurse -Force
+```
+
+Só os 5 arquivos de runtime vão no zip — nada de `.map`, `src/`,
+`node_modules/` ou arquivos de config.
