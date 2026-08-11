@@ -14,6 +14,14 @@ import (
 var (
 	ErrInvalidItemReference    = errors.New("mining: não foi possível identificar o ID do anúncio nesse link/texto")
 	ErrMarketplaceNotConnected = errors.New("mining: conecte sua conta do Mercado Livre em Integrações antes de rastrear anúncios")
+
+	// ErrNotOwnItem: o Mercado Livre nega leitura de itens de terceiros
+	// mesmo pra apps autenticados — só libera acesso a anúncios da própria
+	// conta conectada (ver comentário em mercadolivre_client.go). Rastrear
+	// concorrente exigiria uma abordagem completamente diferente (extensão
+	// de navegador rodando na sessão do usuário, não chamada de API
+	// server-side) — fora de escopo por enquanto.
+	ErrNotOwnItem = errors.New("mining: esse anúncio não pertence à conta do Mercado Livre conectada — a API do ML não libera leitura de itens de terceiros pra apps autenticados")
 )
 
 // itemIDPattern casa tanto o ID puro ("MLB1234567890") quanto o jeito que
@@ -31,22 +39,25 @@ func ParseItemID(urlOrID string) (string, error) {
 	return "MLB" + match[1], nil
 }
 
-// TokenProvider fornece um access_token válido de uma conta de marketplace
-// conectada. Satisfeita por *internal/marketplace.Service, que já tem esse
-// exato método (EnsureValidToken) — interface local em vez de importar o
-// pacote concreto, pra não acoplar mining a marketplace além do necessário.
-type TokenProvider interface {
+// MarketplaceAccount dá acesso ao necessário de uma conta de marketplace
+// conectada — token válido e o ID da conta no marketplace, pra confirmar
+// que um item pertence a ela antes de tentar ler. Satisfeita por
+// *internal/marketplace.Service (que já tem os dois métodos) — interface
+// local em vez de importar o pacote concreto, pra não acoplar mining a
+// marketplace além do necessário.
+type MarketplaceAccount interface {
 	EnsureValidToken(ctx context.Context, tenantID string) (string, error)
+	ConnectedExternalUserID(ctx context.Context, tenantID string) (string, error)
 }
 
 type Service struct {
-	repo   *Repository
-	ml     *MercadoLivreClient
-	tokens TokenProvider
+	repo    *Repository
+	ml      *MercadoLivreClient
+	account MarketplaceAccount
 }
 
-func NewService(repo *Repository, ml *MercadoLivreClient, tokens TokenProvider) *Service {
-	return &Service{repo: repo, ml: ml, tokens: tokens}
+func NewService(repo *Repository, ml *MercadoLivreClient, account MarketplaceAccount) *Service {
+	return &Service{repo: repo, ml: ml, account: account}
 }
 
 // TrackAndSnapshot resolve o ID (aceita link ou ID direto), busca o estado
@@ -60,14 +71,29 @@ func (s *Service) TrackAndSnapshot(ctx context.Context, tenantID, urlOrID string
 		return nil, nil, err
 	}
 
-	accessToken, err := s.tokens.EnsureValidToken(ctx, tenantID)
+	accessToken, err := s.account.EnsureValidToken(ctx, tenantID)
 	if err != nil {
 		return nil, nil, ErrMarketplaceNotConnected
 	}
 
 	public, err := s.ml.FetchItem(ctx, itemID, accessToken)
 	if err != nil {
+		if errors.Is(err, ErrForbidden) {
+			return nil, nil, ErrNotOwnItem
+		}
 		return nil, nil, err
+	}
+
+	// Defesa extra: a API do ML já barra item de terceiro com 403 (tratado
+	// acima), mas confirmamos de novo aqui caso esse comportamento mude —
+	// nunca gravamos snapshot de um item que não bateu com o dono da conta
+	// conectada.
+	connectedUserID, err := s.account.ConnectedExternalUserID(ctx, tenantID)
+	if err != nil {
+		return nil, nil, ErrMarketplaceNotConnected
+	}
+	if fmt.Sprintf("%d", public.SellerID) != connectedUserID {
+		return nil, nil, ErrNotOwnItem
 	}
 
 	item, err := s.repo.UpsertItem(ctx, Item{
