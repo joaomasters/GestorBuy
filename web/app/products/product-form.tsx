@@ -21,6 +21,13 @@ const emptyRow: VariationRow = {
   price: "0",
 };
 
+export type Channel = {
+  item_id?: string;
+  sync_status?: string;
+  last_synced_at?: string;
+  last_error?: string;
+};
+
 export type ProductFormInitialData = {
   sku_master: string;
   title: string;
@@ -33,6 +40,7 @@ export type ProductFormInitialData = {
     cost_price: number;
     price: number;
   }[];
+  channels?: Record<string, Channel>;
 };
 
 type Props =

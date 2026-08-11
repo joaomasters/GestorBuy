@@ -117,6 +117,49 @@ export async function updateProduct(
   redirect("/products");
 }
 
+export async function linkChannel(
+  productId: string,
+  marketplace: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSession();
+
+  const itemID = String(formData.get("item_id") ?? "").trim();
+
+  try {
+    await apiFetch(`/products/${productId}/channels/${marketplace}`, {
+      method: "POST",
+      body: JSON.stringify({ item_id: itemID }),
+    });
+  } catch (err) {
+    return errorMessage(err, "Não foi possível vincular o anúncio");
+  }
+
+  revalidatePath(`/products/${productId}/edit`);
+  return null;
+}
+
+export async function syncChannel(
+  productId: string,
+  marketplace: string,
+  _prevState: ActionState,
+  _formData: FormData
+): Promise<ActionState> {
+  await requireSession();
+
+  try {
+    await apiFetch(`/products/${productId}/channels/${marketplace}/sync`, {
+      method: "POST",
+    });
+  } catch (err) {
+    return errorMessage(err, "Não foi possível sincronizar com o marketplace");
+  }
+
+  revalidatePath(`/products/${productId}/edit`);
+  return null;
+}
+
 export async function deleteProduct(id: string, _formData: FormData) {
   await requireSession();
 

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { ProductForm, type ProductFormInitialData } from "../../product-form";
 import { DeleteButton } from "../delete-button";
+import { ChannelSection } from "../channel-section";
 
 export default async function EditProductPage(
   props: PageProps<"/products/[id]/edit">
@@ -25,6 +26,7 @@ export default async function EditProductPage(
         <DeleteButton productId={id} />
       </div>
       <ProductForm mode="edit" productId={id} initialData={product} />
+      <ChannelSection productId={id} channel={product.channels?.mercadolivre} />
     </main>
   );
 }

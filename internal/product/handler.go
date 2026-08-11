@@ -28,6 +28,7 @@ func (h *Handler) Routes(mux *http.ServeMux, authMiddleware func(http.Handler) h
 	mux.Handle("GET /products/{id}", authMiddleware(http.HandlerFunc(h.get)))
 	mux.Handle("PATCH /products/{id}", authMiddleware(http.HandlerFunc(h.update)))
 	mux.Handle("DELETE /products/{id}", authMiddleware(http.HandlerFunc(h.delete)))
+	mux.Handle("POST /products/{id}/channels/{marketplace}", authMiddleware(http.HandlerFunc(h.linkChannel)))
 }
 
 type variationDTO struct {
@@ -52,16 +53,24 @@ func toVariations(dtos []variationDTO) []Variation {
 	return out
 }
 
+type channelDTO struct {
+	ItemID       string  `json:"item_id,omitempty"`
+	SyncStatus   string  `json:"sync_status,omitempty"`
+	LastSyncedAt *string `json:"last_synced_at,omitempty"`
+	LastError    string  `json:"last_error,omitempty"`
+}
+
 type productResponse struct {
-	ID                 string         `json:"id"`
-	SKUMaster          string         `json:"sku_master"`
-	Title              string         `json:"title"`
-	Brand              string         `json:"brand,omitempty"`
-	CategoryNormalized string         `json:"category_normalized,omitempty"`
-	Variations         []variationDTO `json:"variations"`
-	StockStrategy      string         `json:"stock_strategy"`
-	CreatedAt          string         `json:"created_at"`
-	UpdatedAt          string         `json:"updated_at"`
+	ID                 string                `json:"id"`
+	SKUMaster          string                `json:"sku_master"`
+	Title              string                `json:"title"`
+	Brand              string                `json:"brand,omitempty"`
+	CategoryNormalized string                `json:"category_normalized,omitempty"`
+	Variations         []variationDTO        `json:"variations"`
+	StockStrategy      string                `json:"stock_strategy"`
+	Channels           map[string]channelDTO `json:"channels,omitempty"`
+	CreatedAt          string                `json:"created_at"`
+	UpdatedAt          string                `json:"updated_at"`
 }
 
 func toResponse(p Product) productResponse {
@@ -75,6 +84,20 @@ func toResponse(p Product) productResponse {
 			Price:        v.Price,
 		}
 	}
+
+	var channels map[string]channelDTO
+	if len(p.Channels) > 0 {
+		channels = make(map[string]channelDTO, len(p.Channels))
+		for marketplace, ch := range p.Channels {
+			dto := channelDTO{ItemID: ch.ItemID, SyncStatus: ch.SyncStatus, LastError: ch.LastError}
+			if ch.LastSyncedAt != nil {
+				formatted := ch.LastSyncedAt.Format(timeFormat)
+				dto.LastSyncedAt = &formatted
+			}
+			channels[marketplace] = dto
+		}
+	}
+
 	return productResponse{
 		ID:                 p.ID,
 		SKUMaster:          p.SKUMaster,
@@ -83,6 +106,7 @@ func toResponse(p Product) productResponse {
 		CategoryNormalized: p.CategoryNormalized,
 		Variations:         variations,
 		StockStrategy:      string(p.StockStrategy),
+		Channels:           channels,
 		CreatedAt:          p.CreatedAt.Format(timeFormat),
 		UpdatedAt:          p.UpdatedAt.Format(timeFormat),
 	}
@@ -214,6 +238,36 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toResponse(*p))
 }
 
+type linkChannelRequest struct {
+	ItemID string `json:"item_id"`
+}
+
+// linkChannel só registra o vínculo produto<->anúncio (ex.: item_id do
+// Mercado Livre). O sync de verdade (empurrar preço/estoque) é feito pelo
+// pacote internal/marketplace, registrado à parte em cmd/api/main.go — esse
+// handler aqui não sabe nada sobre a API do marketplace, só grava o
+// relacionamento.
+func (h *Handler) linkChannel(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "não autenticado")
+		return
+	}
+
+	var req linkChannelRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "corpo da requisição inválido")
+		return
+	}
+
+	p, err := h.svc.LinkChannel(r.Context(), claims.TenantID, r.PathValue("id"), r.PathValue("marketplace"), req.ItemID)
+	if err != nil {
+		h.handleServiceError(w, err, "link_channel")
+		return
+	}
+	writeJSON(w, http.StatusOK, toResponse(*p))
+}
+
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
 	if !ok {
@@ -237,7 +291,8 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error, op string
 		errors.Is(err, ErrTitleRequired),
 		errors.Is(err, ErrNoVariations),
 		errors.Is(err, ErrVariationSKURequired),
-		errors.Is(err, ErrDuplicateVariation):
+		errors.Is(err, ErrDuplicateVariation),
+		errors.Is(err, ErrMarketplaceRequired):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	default:
 		h.log.Error("product."+op+" falhou", "error", err)

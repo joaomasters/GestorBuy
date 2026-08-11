@@ -47,6 +47,69 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		return err
 	}
 
+	if err := ensureMarketplaceIndexes(ctx, db); err != nil {
+		return err
+	}
+
+	if err := ensureMiningIndexesAndCollections(ctx, db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ensureMarketplaceIndexes(ctx context.Context, db *mongo.Database) error {
+	credentialIdx := mongo.IndexModel{
+		Keys:    bson.D{{Key: "tenant_id", Value: 1}, {Key: "marketplace", Value: 1}},
+		Options: options.Index().SetUnique(true).SetName("tenant_id_marketplace_unique"),
+	}
+	if _, err := db.Collection("marketplace_credentials").Indexes().CreateOne(ctx, credentialIdx); err != nil {
+		return fmt.Errorf("mongodb: índice de marketplace_credentials: %w", err)
+	}
+	return nil
+}
+
+func ensureMiningIndexesAndCollections(ctx context.Context, db *mongo.Database) error {
+	itemsIdx := mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "tenant_id", Value: 1},
+			{Key: "marketplace", Value: 1},
+			{Key: "external_item_id", Value: 1},
+		},
+		Options: options.Index().SetUnique(true).SetName("tenant_id_marketplace_item_unique"),
+	}
+	if _, err := db.Collection("mined_items").Indexes().CreateOne(ctx, itemsIdx); err != nil {
+		return fmt.Errorf("mongodb: índice de mined_items: %w", err)
+	}
+
+	if err := ensureTimeSeriesCollection(ctx, db, "mined_snapshots"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ensureTimeSeriesCollection cria a coleção como Time Series (seção 1.3 do
+// doc de arquitetura) se ela ainda não existir. CreateCollection não é
+// idempotente feito CreateIndex — tentar criar de novo retorna erro
+// NamespaceExists — então checamos a lista de coleções antes.
+func ensureTimeSeriesCollection(ctx context.Context, db *mongo.Database, name string) error {
+	names, err := db.ListCollectionNames(ctx, bson.D{{Key: "name", Value: name}})
+	if err != nil {
+		return fmt.Errorf("mongodb: listar coleções pra checar %s: %w", name, err)
+	}
+	if len(names) > 0 {
+		return nil // já existe, nada a fazer
+	}
+
+	tsOpts := options.TimeSeries().
+		SetTimeField("ts").
+		SetMetaField("metadata").
+		SetGranularity("hours")
+
+	if err := db.CreateCollection(ctx, name, options.CreateCollection().SetTimeSeriesOptions(tsOpts)); err != nil {
+		return fmt.Errorf("mongodb: criar time series collection %s: %w", name, err)
+	}
 	return nil
 }
 
