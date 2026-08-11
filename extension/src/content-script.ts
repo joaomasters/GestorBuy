@@ -47,18 +47,26 @@ function extractTitle(): string {
 
 function extractPrice(): number {
   // Preço "principal" da página — tenta o container mais específico
-  // primeiro (evita pegar preço "de/por" riscado ou parcelamento).
+  // primeiro (evita pegar preço "de/por" riscado ou parcelamento). Os
+  // centavos ficam num <span class="andes-money-amount__cents"> irmão do
+  // ".../__fraction" (confirmado testando ao vivo: "159" + "99" -> 159.99),
+  // por isso lê os dois a partir do mesmo container .andes-money-amount.
   const candidates = [
     ".ui-pdp-price__second-line .andes-money-amount__fraction",
     ".ui-pdp-price__main-container .andes-money-amount__fraction",
     ".andes-money-amount__fraction",
   ];
   for (const selector of candidates) {
-    const el = document.querySelector(selector);
-    if (el?.textContent) {
-      const value = parseBRLNumber(el.textContent);
-      if (!Number.isNaN(value) && value > 0) return value;
-    }
+    const fractionEl = document.querySelector(selector);
+    if (!fractionEl?.textContent) continue;
+
+    const whole = parseBRLNumber(fractionEl.textContent);
+    if (Number.isNaN(whole) || whole <= 0) continue;
+
+    const centsEl = fractionEl.closest(".andes-money-amount")?.querySelector(".andes-money-amount__cents");
+    const cents = centsEl?.textContent ? parseInt(centsEl.textContent, 10) : 0;
+
+    return whole + (Number.isNaN(cents) ? 0 : cents / 100);
   }
   return 0;
 }
@@ -84,8 +92,16 @@ function extractSellerNickname(): string {
   ]);
   if (scoped) return scoped;
 
-  const bodyMatch = document.body.innerText.match(/Vendido por\s+([^\n]+)/i);
-  return bodyMatch ? bodyMatch[1].trim() : "";
+  // Layout de "loja oficial" (confirmado testando ao vivo: card com "Loja
+  // oficial Bella Arte") não bate com os seletores acima — tenta por texto.
+  // A página também tem um link "Acesse a Loja Oficial de X" mais acima,
+  // que casa com o mesmo regex primeiro e sobra um "de " no início — tira
+  // esse prefixo se aparecer.
+  const officialStoreMatch = document.body.innerText.match(/Loja [Oo]ficial\s+([^\n]+)/);
+  if (officialStoreMatch) return officialStoreMatch[1].trim().replace(/^de\s+/i, "");
+
+  const soldByMatch = document.body.innerText.match(/Vendido por\s+([^\n]+)/i);
+  return soldByMatch ? soldByMatch[1].trim() : "";
 }
 
 function extractPermalink(): string {
