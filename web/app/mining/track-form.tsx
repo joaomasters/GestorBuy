@@ -11,7 +11,7 @@ export function TrackForm() {
   return (
     <form action={formAction} className="flex items-end gap-2">
       <label className="flex flex-col gap-1 text-sm">
-        Link ou ID do anúncio do Mercado Livre
+        Link ou ID de um anúncio seu no Mercado Livre
         <input
           name="url_or_id"
           required

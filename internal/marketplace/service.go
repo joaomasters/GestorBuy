@@ -179,6 +179,22 @@ func (s *Service) Disconnect(ctx context.Context, tenantID string) error {
 	return nil
 }
 
+// ConnectedExternalUserID devolve o user_id do Mercado Livre da conta
+// conectada — usado por internal/mining pra confirmar que um item
+// pertence mesmo à conta antes de tentar buscar os dados dele (a API do ML
+// nega leitura de itens de terceiros mesmo autenticado — ver nota em
+// internal/mining/mercadolivre_client.go).
+func (s *Service) ConnectedExternalUserID(ctx context.Context, tenantID string) (string, error) {
+	cred, err := s.repo.FindByTenant(ctx, tenantID, MarketplaceMercadoLivre)
+	if err != nil {
+		return "", err
+	}
+	if cred == nil {
+		return "", ErrNotConnected
+	}
+	return cred.ExternalUserID, nil
+}
+
 // EnsureValidToken devolve um access_token utilizável, refrescando primeiro
 // se estiver perto de expirar (janela de 5 min). Estratégia lazy —
 // refresca sob demanda, não tem worker em background nesta entrega.

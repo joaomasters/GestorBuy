@@ -1,8 +1,15 @@
-// Package mining implementa a mineração de anúncios estilo Avant Pro —
-// preço, quantidade vendida e faturamento estimado de qualquer anúncio
-// público do Mercado Livre (concorrente ou não). Diferente de
-// internal/marketplace, aqui não tem OAuth nenhum: a API pública de itens
-// do ML (`GET /items/{id}`) já expõe tudo que precisamos sem autenticação.
+// Package mining implementa histórico de preço/vendas estilo Avant Pro —
+// preço, quantidade vendida e faturamento estimado ao longo do tempo.
+//
+// Restrição descoberta em produção: a API do Mercado Livre bloqueia leitura
+// de itens de terceiros mesmo pra apps autenticados (só libera acesso a
+// anúncios da própria conta conectada) — e bloqueia chamada anônima de
+// qualquer item (403 PolicyAgent). Por isso, diferente do desenho original,
+// esse pacote usa o OAuth de internal/marketplace e só rastreia itens da
+// conta conectada. Minerar concorrente de verdade (like o Avant Pro real)
+// exigiria uma extensão de navegador rodando na sessão do usuário — fora de
+// escopo aqui.
+
 package mining
 
 import "time"

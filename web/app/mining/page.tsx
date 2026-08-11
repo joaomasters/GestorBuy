@@ -42,8 +42,18 @@ export default async function MiningPage() {
     <main className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="text-2xl font-semibold">Mineração</h1>
       <p className="mt-1 text-sm text-gray-500">
-        Rastreie qualquer anúncio público do Mercado Livre (seu ou de
-        concorrente) e veja preço, unidades vendidas e faturamento estimado.
+        Acompanhe preço, unidades vendidas e faturamento estimado dos seus
+        próprios anúncios do Mercado Livre ao longo do tempo. Requer a conta
+        conectada em{" "}
+        <a href="/integrations" className="underline">
+          Integrações
+        </a>
+        .
+      </p>
+      <p className="mt-1 text-xs text-gray-400">
+        A API do Mercado Livre não libera leitura de anúncios de terceiros
+        pra apps autenticados — só dá pra rastrear itens da própria conta
+        conectada.
       </p>
 
       <div className="mt-6">

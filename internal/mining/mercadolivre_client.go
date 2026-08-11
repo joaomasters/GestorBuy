@@ -3,11 +3,17 @@ package mining
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 )
+
+// ErrForbidden sinaliza um 403 da API do ML — na prática, hoje isso
+// significa "esse item não pertence à conta autenticada" (ver nota abaixo).
+// O Service traduz isso pra uma mensagem amigável (ErrNotOwnItem).
+var ErrForbidden = errors.New("mining: acesso negado pela API do Mercado Livre")
 
 const publicAPIBaseURL = "https://api.mercadolibre.com"
 
@@ -62,8 +68,11 @@ func (c *MercadoLivreClient) FetchItem(ctx context.Context, itemID, accessToken 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("mining: item %s não encontrado", itemID)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, ErrForbidden
+	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("mining: API pública do ML retornou %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("mining: API do ML retornou %d: %s", resp.StatusCode, string(body))
 	}
 
 	var item PublicItem
