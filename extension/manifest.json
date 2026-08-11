@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "GestorBuy — Mineração Mercado Livre",
+  "version": "0.1.0",
+  "description": "Lê preço, vendidos e faturamento estimado direto da página do anúncio que você está vendo e manda pro GestorBuy — funciona pra qualquer anúncio, inclusive de concorrente, porque lê da sua própria sessão de navegação.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "GestorBuy"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.mercadolivre.com.br/*",
+        "https://produto.mercadolivre.com.br/*"
+      ],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://gestorbuy-production.up.railway.app/*",
+    "http://localhost:8080/*"
+  ]
+}

@@ -17,6 +17,8 @@ type MinedItem = {
   external_item_id: string;
   title: string;
   permalink?: string;
+  seller_nickname?: string;
+  source?: string;
   latest_snapshot?: Snapshot;
 };
 
@@ -42,18 +44,21 @@ export default async function MiningPage() {
     <main className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="text-2xl font-semibold">Mineração</h1>
       <p className="mt-1 text-sm text-gray-500">
-        Acompanhe preço, unidades vendidas e faturamento estimado dos seus
-        próprios anúncios do Mercado Livre ao longo do tempo. Requer a conta
+        Acompanhe preço, unidades vendidas e faturamento estimado ao longo do
+        tempo.
+      </p>
+      <p className="mt-1 text-xs text-gray-400">
+        Pelo formulário abaixo, só dá pra rastrear anúncios da própria conta
         conectada em{" "}
         <a href="/integrations" className="underline">
           Integrações
+        </a>{" "}
+        — a API do Mercado Livre não libera leitura de item de terceiro.
+        Pra minerar anúncio de concorrente, use a{" "}
+        <a href="/extension" className="underline">
+          extensão de navegador
         </a>
-        .
-      </p>
-      <p className="mt-1 text-xs text-gray-400">
-        A API do Mercado Livre não libera leitura de anúncios de terceiros
-        pra apps autenticados — só dá pra rastrear itens da própria conta
-        conectada.
+        , que lê a página na sua própria sessão.
       </p>
 
       <div className="mt-6">
@@ -67,6 +72,7 @@ export default async function MiningPage() {
           <thead>
             <tr className="border-b border-gray-200 text-gray-500">
               <th className="py-2 font-medium">Anúncio</th>
+              <th className="py-2 font-medium">Origem</th>
               <th className="py-2 font-medium">Preço</th>
               <th className="py-2 font-medium">Vendidos</th>
               <th className="py-2 font-medium">Faturamento estimado</th>
@@ -91,7 +97,11 @@ export default async function MiningPage() {
                   )}
                   <div className="font-mono text-xs text-gray-400">
                     {item.external_item_id}
+                    {item.seller_nickname ? ` · ${item.seller_nickname}` : ""}
                   </div>
+                </td>
+                <td className="py-3 text-xs text-gray-500">
+                  {item.source === "extension" ? "Extensão" : "Conta própria"}
                 </td>
                 <td className="py-3">
                   {item.latest_snapshot ? currency.format(item.latest_snapshot.price) : "—"}
@@ -105,7 +115,11 @@ export default async function MiningPage() {
                     : "—"}
                 </td>
                 <td className="py-3 text-right">
-                  <RefreshButton itemId={item.id} />
+                  {item.source === "extension" ? (
+                    <span className="text-xs text-gray-400">atualize pela extensão</span>
+                  ) : (
+                    <RefreshButton itemId={item.id} />
+                  )}
                 </td>
               </tr>
             ))}

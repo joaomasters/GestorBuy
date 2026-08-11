@@ -21,6 +21,7 @@ func NewHandler(svc *Service, log *slog.Logger) *Handler {
 func (h *Handler) Routes(mux *http.ServeMux, authMiddleware func(http.Handler) http.Handler) {
 	mux.Handle("POST /mining/items", authMiddleware(http.HandlerFunc(h.track)))
 	mux.Handle("GET /mining/items", authMiddleware(http.HandlerFunc(h.list)))
+	mux.Handle("POST /mining/items/ingest", authMiddleware(http.HandlerFunc(h.ingest)))
 	mux.Handle("POST /mining/items/{id}/refresh", authMiddleware(http.HandlerFunc(h.refresh)))
 	mux.Handle("GET /mining/items/{id}/history", authMiddleware(http.HandlerFunc(h.history)))
 }
@@ -52,6 +53,8 @@ type itemDTO struct {
 	Title          string       `json:"title"`
 	Permalink      string       `json:"permalink,omitempty"`
 	CategoryID     string       `json:"category_id,omitempty"`
+	SellerNickname string       `json:"seller_nickname,omitempty"`
+	Source         string       `json:"source,omitempty"`
 	LatestSnapshot *snapshotDTO `json:"latest_snapshot,omitempty"`
 }
 
@@ -63,6 +66,8 @@ func toItemDTO(item Item, snap *Snapshot) itemDTO {
 		Title:          item.Title,
 		Permalink:      item.Permalink,
 		CategoryID:     item.CategoryID,
+		SellerNickname: item.SellerNickname,
+		Source:         item.Source,
 	}
 	if snap != nil {
 		s := toSnapshotDTO(*snap)
@@ -91,6 +96,48 @@ func (h *Handler) track(w http.ResponseWriter, r *http.Request) {
 	item, snap, err := h.svc.TrackAndSnapshot(r.Context(), claims.TenantID, req.URLOrID)
 	if err != nil {
 		h.handleServiceError(w, err, "track")
+		return
+	}
+	writeJSON(w, http.StatusCreated, toItemDTO(*item, snap))
+}
+
+type ingestRequest struct {
+	ExternalItemID    string  `json:"external_item_id"`
+	Title             string  `json:"title"`
+	Permalink         string  `json:"permalink"`
+	SellerNickname    string  `json:"seller_nickname"`
+	Price             float64 `json:"price"`
+	SoldQuantity      int64   `json:"sold_quantity"`
+	AvailableQuantity int64   `json:"available_quantity"`
+}
+
+// ingest recebe dado já minerado pela extensão de navegador (ver
+// extension/) — nenhuma chamada à API do ML acontece aqui, só validação e
+// gravação. É o caminho que não sofre a restrição de "só item próprio".
+func (h *Handler) ingest(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "não autenticado")
+		return
+	}
+
+	var req ingestRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "corpo da requisição inválido")
+		return
+	}
+
+	item, snap, err := h.svc.IngestSnapshot(r.Context(), claims.TenantID, IngestInput{
+		ExternalItemID:    req.ExternalItemID,
+		Title:             req.Title,
+		Permalink:         req.Permalink,
+		SellerNickname:    req.SellerNickname,
+		Price:             req.Price,
+		SoldQuantity:      req.SoldQuantity,
+		AvailableQuantity: req.AvailableQuantity,
+	})
+	if err != nil {
+		h.handleServiceError(w, err, "ingest")
 		return
 	}
 	writeJSON(w, http.StatusCreated, toItemDTO(*item, snap))

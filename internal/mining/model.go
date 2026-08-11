@@ -19,6 +19,16 @@ const MarketplaceMercadoLivre = "mercadolivre"
 // Item é o documento de identidade do anúncio rastreado — baixo volume de
 // escrita, só muda quando título/permalink mudam. O histórico de
 // preço/vendas de verdade fica em Snapshot (time series).
+// Source diferencia como o item chegou até nós: "api" (TrackAndSnapshot,
+// só funciona pra item da própria conta conectada — ver
+// mercadolivre_client.go) ou "extension" (IngestSnapshot, dado já
+// pré-minerado pela extensão de navegador, sem restrição de dono porque
+// não é mais uma chamada de servidor).
+const (
+	SourceAPI       = "api"
+	SourceExtension = "extension"
+)
+
 type Item struct {
 	ID             string    `bson:"_id"`
 	TenantID       string    `bson:"tenant_id"`
@@ -27,7 +37,9 @@ type Item struct {
 	Title          string    `bson:"title"`
 	Permalink      string    `bson:"permalink,omitempty"`
 	SellerID       int64     `bson:"seller_id,omitempty"`
+	SellerNickname string    `bson:"seller_nickname,omitempty"`
 	CategoryID     string    `bson:"category_id,omitempty"`
+	Source         string    `bson:"source,omitempty"`
 	CreatedAt      time.Time `bson:"created_at"`
 	UpdatedAt      time.Time `bson:"updated_at"`
 }

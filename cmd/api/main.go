@@ -18,8 +18,10 @@ import (
 	"github.com/gestorbuy/api/internal/auth"
 	"github.com/gestorbuy/api/internal/config"
 	"github.com/gestorbuy/api/internal/health"
+	"github.com/gestorbuy/api/internal/margin"
 	"github.com/gestorbuy/api/internal/marketplace"
 	"github.com/gestorbuy/api/internal/mining"
+	"github.com/gestorbuy/api/internal/orders"
 	"github.com/gestorbuy/api/internal/platform/httpserver"
 	"github.com/gestorbuy/api/internal/platform/mongodb"
 	"github.com/gestorbuy/api/internal/product"
@@ -85,6 +87,15 @@ func main() {
 	miningSvc := mining.NewService(miningRepo, mining.NewMercadoLivreClient(), marketplaceSvc)
 	miningHandler := mining.NewHandler(miningSvc, log)
 
+	// Gestão de pedidos — mesmo padrão do mining: lê a própria conta
+	// conectada, sob demanda (sem webhook/worker nesta entrega).
+	ordersRepo := orders.NewRepository(db)
+	ordersSvc := orders.NewService(ordersRepo, orders.NewMercadoLivreClient(), marketplaceSvc)
+	ordersHandler := orders.NewHandler(ordersSvc, log)
+
+	// Calculadora de margem — stateless, sem repository.
+	marginHandler := margin.NewHandler()
+
 	mux := http.NewServeMux()
 	healthHandler.Routes(mux)
 	authHandler.Routes(mux)
@@ -93,6 +104,8 @@ func main() {
 	marketplaceHandler.Routes(mux, authSvc.Middleware)
 	marketplaceHandler.RoutesPublic(mux)
 	miningHandler.Routes(mux, authSvc.Middleware)
+	ordersHandler.Routes(mux, authSvc.Middleware)
+	marginHandler.Routes(mux, authSvc.Middleware)
 
 	srv := httpserver.New(":"+cfg.HTTPPort, mux, log)
 

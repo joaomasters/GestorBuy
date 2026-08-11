@@ -38,7 +38,9 @@ func (r *Repository) UpsertItem(ctx context.Context, item Item) (*Item, error) {
 			{Key: "title", Value: item.Title},
 			{Key: "permalink", Value: item.Permalink},
 			{Key: "seller_id", Value: item.SellerID},
+			{Key: "seller_nickname", Value: item.SellerNickname},
 			{Key: "category_id", Value: item.CategoryID},
+			{Key: "source", Value: item.Source},
 			{Key: "updated_at", Value: now},
 		}},
 		{Key: "$setOnInsert", Value: bson.D{

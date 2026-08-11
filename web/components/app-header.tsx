@@ -13,11 +13,20 @@ export function AppHeader() {
             <Link href="/products" className="hover:text-gray-900">
               Produtos
             </Link>
+            <Link href="/orders" className="hover:text-gray-900">
+              Pedidos
+            </Link>
+            <Link href="/margin" className="hover:text-gray-900">
+              Margem
+            </Link>
             <Link href="/integrations" className="hover:text-gray-900">
               Integrações
             </Link>
             <Link href="/mining" className="hover:text-gray-900">
               Mineração
+            </Link>
+            <Link href="/extension" className="hover:text-gray-900">
+              Extensão
             </Link>
           </nav>
         </div>

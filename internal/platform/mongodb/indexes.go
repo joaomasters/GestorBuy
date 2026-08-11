@@ -55,6 +55,25 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		return err
 	}
 
+	if err := ensureOrdersIndexes(ctx, db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ensureOrdersIndexes(ctx context.Context, db *mongo.Database) error {
+	idx := mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "tenant_id", Value: 1},
+			{Key: "marketplace", Value: 1},
+			{Key: "external_order_id", Value: 1},
+		},
+		Options: options.Index().SetUnique(true).SetName("tenant_id_marketplace_order_unique"),
+	}
+	if _, err := db.Collection("orders").Indexes().CreateOne(ctx, idx); err != nil {
+		return fmt.Errorf("mongodb: índice de orders: %w", err)
+	}
 	return nil
 }
 

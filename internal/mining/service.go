@@ -105,6 +105,7 @@ func (s *Service) TrackAndSnapshot(ctx context.Context, tenantID, urlOrID string
 		Permalink:      public.Permalink,
 		SellerID:       public.SellerID,
 		CategoryID:     public.CategoryID,
+		Source:         SourceAPI,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -121,6 +122,60 @@ func (s *Service) TrackAndSnapshot(ctx context.Context, tenantID, urlOrID string
 		SoldQuantity:          public.SoldQuantity,
 		AvailableQuantity:     public.AvailableQuantity,
 		EstimatedRevenueTotal: public.Price * float64(public.SoldQuantity),
+	}
+	if err := s.repo.InsertSnapshot(ctx, snap); err != nil {
+		return nil, nil, err
+	}
+
+	return item, &snap, nil
+}
+
+// IngestInput é o dado já minerado pela extensão de navegador — lido da
+// própria página renderizada, na sessão autenticada do usuário. Diferente
+// de TrackAndSnapshot, aqui o Service não chama a API do ML pra nada, então
+// não tem a restrição de "só item da própria conta" (não é mais uma
+// chamada de servidor, então o bloqueio de item de terceiro não se aplica).
+type IngestInput struct {
+	ExternalItemID    string
+	Title             string
+	Permalink         string
+	SellerNickname    string
+	Price             float64
+	SoldQuantity      int64
+	AvailableQuantity int64
+}
+
+func (s *Service) IngestSnapshot(ctx context.Context, tenantID string, in IngestInput) (*Item, *Snapshot, error) {
+	itemID, err := ParseItemID(in.ExternalItemID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	item, err := s.repo.UpsertItem(ctx, Item{
+		ID:             bson.NewObjectID().Hex(),
+		TenantID:       tenantID,
+		Marketplace:    MarketplaceMercadoLivre,
+		ExternalItemID: itemID,
+		Title:          in.Title,
+		Permalink:      in.Permalink,
+		SellerNickname: in.SellerNickname,
+		Source:         SourceExtension,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	snap := Snapshot{
+		TS: time.Now().UTC(),
+		Metadata: SnapshotMeta{
+			TenantID:       tenantID,
+			Marketplace:    MarketplaceMercadoLivre,
+			ExternalItemID: itemID,
+		},
+		Price:                 in.Price,
+		SoldQuantity:          in.SoldQuantity,
+		AvailableQuantity:     in.AvailableQuantity,
+		EstimatedRevenueTotal: in.Price * float64(in.SoldQuantity),
 	}
 	if err := s.repo.InsertSnapshot(ctx, snap); err != nil {
 		return nil, nil, err
