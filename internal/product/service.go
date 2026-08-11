@@ -173,3 +173,38 @@ func (s *Service) Delete(ctx context.Context, tenantID, id string) error {
 	}
 	return nil
 }
+
+var ErrMarketplaceRequired = errors.New("product: marketplace é obrigatório")
+
+// LinkChannel associa o produto a um anúncio existente num marketplace
+// (ex.: item_id do Mercado Livre). Não sincroniza nada sozinho — só
+// registra o vínculo; quem dispara o primeiro sync é
+// internal/marketplace.Service.SyncProductChannel.
+func (s *Service) LinkChannel(ctx context.Context, tenantID, productID, marketplace, itemID string) (*Product, error) {
+	if marketplace == "" {
+		return nil, ErrMarketplaceRequired
+	}
+	if itemID == "" {
+		return nil, errors.New("product: item_id é obrigatório")
+	}
+
+	return s.UpdateChannel(ctx, tenantID, productID, marketplace, Channel{
+		ItemID:     itemID,
+		SyncStatus: SyncStatusLinked,
+	})
+}
+
+// UpdateChannel sobrescreve o estado do canal pro marketplace informado —
+// usado tanto por LinkChannel quanto por internal/marketplace.Service depois
+// de tentar sincronizar (sucesso ou erro), sempre preservando o ItemID que o
+// chamador passar.
+func (s *Service) UpdateChannel(ctx context.Context, tenantID, productID, marketplace string, ch Channel) (*Product, error) {
+	p, err := s.repo.Update(ctx, tenantID, productID, bson.M{"channels." + marketplace: ch})
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, ErrNotFound
+	}
+	return p, nil
+}

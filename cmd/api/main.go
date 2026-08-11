@@ -18,6 +18,8 @@ import (
 	"github.com/gestorbuy/api/internal/auth"
 	"github.com/gestorbuy/api/internal/config"
 	"github.com/gestorbuy/api/internal/health"
+	"github.com/gestorbuy/api/internal/marketplace"
+	"github.com/gestorbuy/api/internal/mining"
 	"github.com/gestorbuy/api/internal/platform/httpserver"
 	"github.com/gestorbuy/api/internal/platform/mongodb"
 	"github.com/gestorbuy/api/internal/product"
@@ -63,11 +65,30 @@ func main() {
 	productSvc := product.NewService(productRepo)
 	productHandler := product.NewHandler(productSvc, log)
 
+	// Hub OAuth2 de marketplace — ML_CLIENT_ID/SECRET/REDIRECT_URI e
+	// TOKEN_ENCRYPTION_KEY vazios são aceitos (app do Mercado Livre ainda
+	// não criado); o serviço sobe normal e só recusa connect/sync com
+	// ErrNotConfigured até essas variáveis existirem.
+	marketplaceRepo := marketplace.NewRepository(db)
+	marketplaceSvc, err := marketplace.New(marketplaceRepo, productSvc, cfg.JWTSecret, cfg.MLClientID, cfg.MLClientSecret, cfg.MLRedirectURI, cfg.TokenEncryptionKey)
+	if err != nil {
+		log.Error("configuração de marketplace inválida", "error", err)
+		os.Exit(1)
+	}
+	marketplaceHandler := marketplace.NewHandler(marketplaceSvc, log, cfg.FrontendURL)
+
+	miningRepo := mining.NewRepository(db)
+	miningSvc := mining.NewService(miningRepo, mining.NewMercadoLivreClient())
+	miningHandler := mining.NewHandler(miningSvc, log)
+
 	mux := http.NewServeMux()
 	healthHandler.Routes(mux)
 	authHandler.Routes(mux)
 	mux.Handle("GET /me", authSvc.Middleware(http.HandlerFunc(authHandler.Me)))
 	productHandler.Routes(mux, authSvc.Middleware)
+	marketplaceHandler.Routes(mux, authSvc.Middleware)
+	marketplaceHandler.RoutesPublic(mux)
+	miningHandler.Routes(mux, authSvc.Middleware)
 
 	srv := httpserver.New(":"+cfg.HTTPPort, mux, log)
 

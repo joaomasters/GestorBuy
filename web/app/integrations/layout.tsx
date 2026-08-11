@@ -1,6 +1,6 @@
 import { AppHeader } from "@/components/app-header";
 
-export default function ProductsLayout({
+export default function IntegrationsLayout({
   children,
 }: {
   children: React.ReactNode;

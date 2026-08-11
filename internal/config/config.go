@@ -17,6 +17,23 @@ type Config struct {
 	MongoDBName string
 	JWTSecret   string
 	JWTTTL      time.Duration
+
+	// FrontendURL é pra onde o backend redireciona o navegador depois do
+	// callback OAuth de um marketplace (ver internal/marketplace).
+	FrontendURL string
+
+	// TokenEncryptionKey cifra credenciais de marketplace antes de gravar
+	// no Mongo (ver internal/platform/crypto). Opcional no boot: só é
+	// exigida no momento em que alguém tenta conectar um marketplace —
+	// não faz sentido travar a aplicação inteira por causa de uma
+	// integração que ainda não existe.
+	TokenEncryptionKey string
+
+	// Credenciais do app OAuth do Mercado Livre. Também opcionais no boot
+	// pelo mesmo motivo — ver internal/marketplace/mercadolivre.
+	MLClientID     string
+	MLClientSecret string
+	MLRedirectURI  string
 }
 
 // Load lê as variáveis de ambiente e valida o mínimo necessário para o boot.
@@ -32,6 +49,14 @@ func Load() (Config, error) {
 		MongoDBName: getEnv("MONGO_DB_NAME", "gestorbuy"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),
 		JWTTTL:      24 * time.Hour,
+
+		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
+
+		TokenEncryptionKey: os.Getenv("TOKEN_ENCRYPTION_KEY"),
+
+		MLClientID:     os.Getenv("ML_CLIENT_ID"),
+		MLClientSecret: os.Getenv("ML_CLIENT_SECRET"),
+		MLRedirectURI:  os.Getenv("ML_REDIRECT_URI"),
 	}
 
 	if cfg.JWTSecret == "" {
