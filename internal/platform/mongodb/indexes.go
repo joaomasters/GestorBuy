@@ -43,5 +43,37 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		return fmt.Errorf("mongodb: índice de tenants: %w", err)
 	}
 
+	if err := ensureProductIndexes(ctx, db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ensureProductIndexes(ctx context.Context, db *mongo.Database) error {
+	skuUniqueIdx := mongo.IndexModel{
+		Keys:    bson.D{{Key: "tenant_id", Value: 1}, {Key: "sku_master", Value: 1}},
+		Options: options.Index().SetUnique(true).SetName("tenant_id_sku_master_unique"),
+	}
+	variationSKUIdx := mongo.IndexModel{
+		Keys:    bson.D{{Key: "tenant_id", Value: 1}, {Key: "variations.variation_sku", Value: 1}},
+		Options: options.Index().SetName("tenant_id_variation_sku"),
+	}
+	if _, err := db.Collection("products").Indexes().CreateMany(ctx, []mongo.IndexModel{skuUniqueIdx, variationSKUIdx}); err != nil {
+		return fmt.Errorf("mongodb: índices de products: %w", err)
+	}
+
+	// Text index para busca de anúncios (seção 2.4 do doc de arquitetura).
+	textIdx := mongo.IndexModel{
+		Keys: bson.D{{Key: "title", Value: "text"}, {Key: "brand", Value: "text"}, {Key: "sku_master", Value: "text"}},
+		Options: options.Index().
+			SetName("products_text_search").
+			SetWeights(bson.D{{Key: "title", Value: 10}, {Key: "brand", Value: 5}, {Key: "sku_master", Value: 3}}).
+			SetDefaultLanguage("portuguese"),
+	}
+	if _, err := db.Collection("products").Indexes().CreateOne(ctx, textIdx); err != nil {
+		return fmt.Errorf("mongodb: índice de texto de products: %w", err)
+	}
+
 	return nil
 }

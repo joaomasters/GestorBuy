@@ -20,6 +20,7 @@ import (
 	"github.com/gestorbuy/api/internal/health"
 	"github.com/gestorbuy/api/internal/platform/httpserver"
 	"github.com/gestorbuy/api/internal/platform/mongodb"
+	"github.com/gestorbuy/api/internal/product"
 	"github.com/gestorbuy/api/internal/tenant"
 )
 
@@ -58,11 +59,15 @@ func main() {
 	authSvc := auth.NewService(client, userRepo, tenantRepo, cfg.JWTSecret, cfg.JWTTTL)
 	authHandler := auth.NewHandler(authSvc, log)
 	healthHandler := health.NewHandler(client)
+	productRepo := product.NewRepository(db)
+	productSvc := product.NewService(productRepo)
+	productHandler := product.NewHandler(productSvc, log)
 
 	mux := http.NewServeMux()
 	healthHandler.Routes(mux)
 	authHandler.Routes(mux)
 	mux.Handle("GET /me", authSvc.Middleware(http.HandlerFunc(authHandler.Me)))
+	productHandler.Routes(mux, authSvc.Middleware)
 
 	srv := httpserver.New(":"+cfg.HTTPPort, mux, log)
 
