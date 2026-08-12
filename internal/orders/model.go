@@ -9,9 +9,15 @@ import "time"
 const MarketplaceMercadoLivre = "mercadolivre"
 
 type OrderItem struct {
-	Title     string  `bson:"title"`
-	Quantity  int     `bson:"quantity"`
-	UnitPrice float64 `bson:"unit_price"`
+	// ExternalItemID é o item_id do Mercado Livre — usado por
+	// internal/dashboard pra achar o produto do catálogo vinculado (via
+	// product.Channels) e saber o custo, calculando lucro bruto de verdade
+	// em vez de só somar receita. Pode vir vazio pra pedidos sincronizados
+	// antes desse campo existir — trate como "sem vínculo conhecido".
+	ExternalItemID string  `bson:"external_item_id,omitempty"`
+	Title          string  `bson:"title"`
+	Quantity       int     `bson:"quantity"`
+	UnitPrice      float64 `bson:"unit_price"`
 }
 
 type Order struct {

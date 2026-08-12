@@ -63,7 +63,7 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 }
 
 func ensureOrdersIndexes(ctx context.Context, db *mongo.Database) error {
-	idx := mongo.IndexModel{
+	uniqueIdx := mongo.IndexModel{
 		Keys: bson.D{
 			{Key: "tenant_id", Value: 1},
 			{Key: "marketplace", Value: 1},
@@ -71,7 +71,13 @@ func ensureOrdersIndexes(ctx context.Context, db *mongo.Database) error {
 		},
 		Options: options.Index().SetUnique(true).SetName("tenant_id_marketplace_order_unique"),
 	}
-	if _, err := db.Collection("orders").Indexes().CreateOne(ctx, idx); err != nil {
+	// Suporta o range query de internal/dashboard (ListInRange) sem scan
+	// completo da coleção por tenant.
+	dateRangeIdx := mongo.IndexModel{
+		Keys:    bson.D{{Key: "tenant_id", Value: 1}, {Key: "date_created", Value: -1}},
+		Options: options.Index().SetName("tenant_id_date_created"),
+	}
+	if _, err := db.Collection("orders").Indexes().CreateMany(ctx, []mongo.IndexModel{uniqueIdx, dateRangeIdx}); err != nil {
 		return fmt.Errorf("mongodb: índice de orders: %w", err)
 	}
 	return nil

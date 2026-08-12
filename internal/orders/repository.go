@@ -67,3 +67,23 @@ func (r *Repository) List(ctx context.Context, tenantID string) ([]Order, error)
 	}
 	return orders, nil
 }
+
+// ListInRange devolve os pedidos com date_created em [from, to] — usado
+// pelo internal/dashboard pra agregar faturamento/lucro do período.
+func (r *Repository) ListInRange(ctx context.Context, tenantID string, from, to time.Time) ([]Order, error) {
+	filter := bson.D{
+		{Key: "tenant_id", Value: tenantID},
+		{Key: "date_created", Value: bson.D{{Key: "$gte", Value: from}, {Key: "$lte", Value: to}}},
+	}
+	cursor, err := r.col.Find(ctx, filter, options.Find().SetSort(bson.D{{Key: "date_created", Value: 1}}))
+	if err != nil {
+		return nil, fmt.Errorf("orders: list in range: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	orders := make([]Order, 0)
+	if err := cursor.All(ctx, &orders); err != nil {
+		return nil, fmt.Errorf("orders: decode list in range: %w", err)
+	}
+	return orders, nil
+}
