@@ -48,7 +48,12 @@ func (s *Service) SyncOrders(ctx context.Context, tenantID string) (int, error) 
 	for _, ro := range rawOrders {
 		items := make([]OrderItem, len(ro.OrderItems))
 		for i, oi := range ro.OrderItems {
-			items[i] = OrderItem{Title: oi.Item.Title, Quantity: oi.Quantity, UnitPrice: oi.UnitPrice}
+			items[i] = OrderItem{
+				ExternalItemID: oi.Item.ID,
+				Title:          oi.Item.Title,
+				Quantity:       oi.Quantity,
+				UnitPrice:      oi.UnitPrice,
+			}
 		}
 
 		order := Order{

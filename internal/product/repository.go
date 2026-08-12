@@ -34,6 +34,25 @@ func (r *Repository) Create(ctx context.Context, p Product) error {
 
 // FindByID busca sempre escopado por tenant_id — mesmo padrão de isolamento
 // usado em todo o resto do sistema (ver internal/tenant/repository.go).
+// FindByChannelItemID acha o produto do catálogo vinculado a um item_id de
+// marketplace (via product.Channels) — usado por internal/dashboard pra
+// achar o custo de um item de pedido e calcular lucro bruto de verdade.
+func (r *Repository) FindByChannelItemID(ctx context.Context, tenantID, marketplace, itemID string) (*Product, error) {
+	var p Product
+	filter := bson.D{
+		{Key: "tenant_id", Value: tenantID},
+		{Key: "channels." + marketplace + ".item_id", Value: itemID},
+	}
+	err := r.col.FindOne(ctx, filter).Decode(&p)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("product: find by channel item id: %w", err)
+	}
+	return &p, nil
+}
+
 func (r *Repository) FindByID(ctx context.Context, tenantID, id string) (*Product, error) {
 	var p Product
 	filter := bson.D{{Key: "_id", Value: id}, {Key: "tenant_id", Value: tenantID}}

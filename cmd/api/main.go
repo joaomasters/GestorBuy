@@ -17,6 +17,7 @@ import (
 
 	"github.com/gestorbuy/api/internal/auth"
 	"github.com/gestorbuy/api/internal/config"
+	"github.com/gestorbuy/api/internal/dashboard"
 	"github.com/gestorbuy/api/internal/health"
 	"github.com/gestorbuy/api/internal/margin"
 	"github.com/gestorbuy/api/internal/marketplace"
@@ -96,6 +97,10 @@ func main() {
 	// Calculadora de margem — stateless, sem repository.
 	marginHandler := margin.NewHandler()
 
+	// Dashboard só orquestra orders+product, sem repository/coleção própria.
+	dashboardSvc := dashboard.NewService(ordersRepo, productRepo)
+	dashboardHandler := dashboard.NewHandler(dashboardSvc, log)
+
 	mux := http.NewServeMux()
 	healthHandler.Routes(mux)
 	authHandler.Routes(mux)
@@ -106,6 +111,7 @@ func main() {
 	miningHandler.Routes(mux, authSvc.Middleware)
 	ordersHandler.Routes(mux, authSvc.Middleware)
 	marginHandler.Routes(mux, authSvc.Middleware)
+	dashboardHandler.Routes(mux, authSvc.Middleware)
 
 	srv := httpserver.New(":"+cfg.HTTPPort, mux, log)
 

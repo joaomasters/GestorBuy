@@ -26,6 +26,7 @@ type RawOrder struct {
 	} `json:"buyer"`
 	OrderItems []struct {
 		Item struct {
+			ID    string `json:"id"`
 			Title string `json:"title"`
 		} `json:"item"`
 		Quantity  int     `json:"quantity"`

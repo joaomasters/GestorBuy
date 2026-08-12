@@ -4,5 +4,5 @@ import { SESSION_COOKIE } from "@/lib/session";
 
 export default async function Home() {
   const cookieStore = await cookies();
-  redirect(cookieStore.has(SESSION_COOKIE) ? "/products" : "/login");
+  redirect(cookieStore.has(SESSION_COOKIE) ? "/dashboard" : "/login");
 }
